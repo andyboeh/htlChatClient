@@ -19,7 +19,11 @@ class htlFileTransfer;
 class htlChatClient : public QMainWindow
 {
     Q_OBJECT
-
+    typedef enum {
+        STATE_DISCONNECTED,
+        STATE_CONNECTING,
+        STATE_CONNECTED
+    } UiState;
 public:
     htlChatClient(QWidget *parent = nullptr);
     ~htlChatClient();
@@ -62,5 +66,7 @@ private:
     void sendCommandList(QStringList commands);
     void handlePrivateMessage(QString sender, QString message);
     void handlePublicMessage(QString sender, QString message);
+    void handleUiState(UiState state);
+    void setUserBold(QString sender, bool bold);
 };
 #endif // HTLCHATCLIENT_H

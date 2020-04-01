@@ -21,9 +21,11 @@ htlChatClient::htlChatClient(QWidget *parent)
     connect(mSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(error(QAbstractSocket::SocketError)));
     connect(mSocket, SIGNAL(encrypted()), this, SLOT(encrypted()));
     connect(mSocket, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWritten(qint64)));
+    connect(ui->editMessage, SIGNAL(returnPressed()), this, SLOT(on_btnSend_clicked()));
     mTextBrowser = ui->textData;
     ui->lblChatroom->setText("Chatroom: Public");
     mCurrentChatroom = "";
+    handleUiState(STATE_DISCONNECTED);
 }
 
 void htlChatClient::encrypted() {
@@ -37,10 +39,15 @@ void htlChatClient::encrypted() {
     command.clear();
     command.append("getUserList");
     sendCommandList(command);
+
+    handleUiState(STATE_CONNECTED);
 }
 
 void htlChatClient::error(QAbstractSocket::SocketError error) {
     qDebug() << error;
+    mSocket->abort();
+    ui->btnConnect->setChecked(false);
+    handleUiState(STATE_DISCONNECTED);
 }
 
 htlChatClient::~htlChatClient()
@@ -54,13 +61,60 @@ void htlChatClient::sslErrors(QList<QSslError> errors) {
 
 void htlChatClient::on_btnConnect_clicked()
 {
-    mUsername = ui->editUsername->text();
-    if(mUsername.isEmpty()) {
-        // FIXME
-        return;
+    if(!ui->btnConnect->isChecked()) {
+        mSocket->disconnectFromHost();
+        mSocket->waitForDisconnected();
+        handleUiState(STATE_DISCONNECTED);
+    } else {
+        mUsername = ui->editUsername->text();
+        if(mUsername.isEmpty()) {
+            QMessageBox::information(this, "Error", "You must set a username.");
+            ui->btnConnect->setChecked(false);
+            return;
+        }
+        if(ui->editHost->text().isEmpty()) {
+            QMessageBox::information(this, "Error", "You must specify a server name.");
+            ui->btnConnect->setChecked(false);
+            return;
+        }
+
+        mSocket->abort();
+        mSocket->connectToHost(ui->editHost->text(), ui->spinPort->value());
+        handleUiState(STATE_CONNECTING);
     }
-    mSocket->abort();
-    mSocket->connectToHost(ui->editHost->text(), ui->spinPort->value());
+}
+
+void htlChatClient::handleUiState(UiState state) {
+    switch(state) {
+    case STATE_CONNECTED:
+        ui->editHost->setEnabled(false);
+        ui->spinPort->setEnabled(false);
+        ui->editUsername->setEnabled(false);
+
+        ui->btnSend->setEnabled(true);
+        ui->pushButton->setEnabled(true);
+        ui->editMessage->setEnabled(true);
+        ui->btnPublicChatroom->setEnabled(true);
+
+        ui->btnConnect->setText("Disconnect");
+        break;
+    case STATE_DISCONNECTED:
+        ui->editHost->setEnabled(true);
+        ui->spinPort->setEnabled(true);
+        ui->editUsername->setEnabled(true);
+
+        ui->btnSend->setEnabled(false);
+        ui->pushButton->setEnabled(false);
+        ui->editMessage->setEnabled(false);
+        ui->btnPublicChatroom->setEnabled(false);
+        ui->listUserlist->clear();
+
+        ui->btnConnect->setText("Connect");
+        break;
+    case STATE_CONNECTING:
+        ui->btnConnect->setText("Connecting");
+        break;
+    }
 }
 
 void htlChatClient::sendCommandList(QStringList commands) {
@@ -85,6 +139,7 @@ void htlChatClient::on_btnSend_clicked()
     }
     ui->textData->append("me: " + message);
     sendCommandList(commands);
+    ui->editMessage->setText("");
 }
 
 void htlChatClient::rebuildUserList() {
@@ -119,7 +174,19 @@ void htlChatClient::handlePrivateMessage(QString sender, QString message)
         return;
     }
     mUsermapToTextMapping.value(sender)->append(sender + ": " + message);
+    if(mCurrentChatroom != sender) {
+        setUserBold(sender, true);
+    }
     qDebug() << "appended.";
+}
+
+void htlChatClient::setUserBold(QString sender, bool bold) {
+    QList<QListWidgetItem*> item = ui->listUserlist->findItems(sender, Qt::MatchExactly);
+    if(item.count() > 0) {
+        QFont font;
+        font.setBold(bold);
+        item.at(0)->setFont(font);
+    }
 }
 
 void htlChatClient::handlePublicMessage(QString sender, QString message)
@@ -250,6 +317,7 @@ void htlChatClient::on_listUserlist_itemClicked(QListWidgetItem *item)
     ui->textData = textBrowser;
     ui->textData->show();
     ui->lblChatroom->setText("Chatroom: " + username);
+    setUserBold(username, false);
     mCurrentChatroom = username;
 }
 
@@ -260,6 +328,7 @@ void htlChatClient::on_btnPublicChatroom_clicked()
     ui->textData = mTextBrowser;
     ui->textData->show();
     ui->lblChatroom->setText("Chatroom: Public");
+    ui->listUserlist->clearSelection();
     mCurrentChatroom = "";
 }
 
