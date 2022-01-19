@@ -24,12 +24,13 @@ htlChatClient::htlChatClient(QWidget *parent)
     connect(ui->editMessage, SIGNAL(returnPressed()), this, SLOT(on_btnSend_clicked()));
     mTextBrowser = ui->textData;
     ui->lblChatroom->setText("Chatroom: Public");
+    ui->chkTls->setChecked(true);
     mCurrentChatroom = "";
     handleUiState(STATE_DISCONNECTED);
 }
 
 void htlChatClient::encrypted() {
-    qDebug() << "Connection encrypted.";
+    qDebug() << "Connection encrypted or no encryption forced.";
     QStringList command;
 
     command.append("setUsername");
@@ -95,7 +96,7 @@ void htlChatClient::handleUiState(UiState state) {
         ui->pushButton->setEnabled(true);
         ui->editMessage->setEnabled(true);
         ui->btnPublicChatroom->setEnabled(true);
-
+        ui->chkTls->setEnabled(false);
         ui->btnConnect->setText("Disconnect");
         break;
     case STATE_DISCONNECTED:
@@ -107,6 +108,7 @@ void htlChatClient::handleUiState(UiState state) {
         ui->pushButton->setEnabled(false);
         ui->editMessage->setEnabled(false);
         ui->btnPublicChatroom->setEnabled(false);
+        ui->chkTls->setEnabled(true);
         ui->listUserlist->clear();
 
         ui->btnConnect->setText("Connect");
@@ -248,15 +250,19 @@ void htlChatClient::readyRead()
     } else if(command == "sendChunk") {
         sendChunk(commands.at(1), commands.at(2));
     } else if(command == "welcomeToServer") {
-        QStringList command;
+        if(ui->chkTls->isChecked()) {
+            QStringList command;
 
-        command.append("startEncryption");
-        sendCommandList(command);
+            command.append("startEncryption");
+            sendCommandList(command);
 
-        mSocket->setPeerVerifyMode(QSslSocket::VerifyPeer);
-        mSocket->waitForBytesWritten();
-        mSocket->flush();
-        mSocket->startClientEncryption();
+            mSocket->setPeerVerifyMode(QSslSocket::VerifyPeer);
+            mSocket->waitForBytesWritten();
+            mSocket->flush();
+            mSocket->startClientEncryption();
+        } else {
+            encrypted();
+        }
     } else {
         qDebug() << "Received unknown command: ";
         qDebug() << commands;

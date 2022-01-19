@@ -59,6 +59,13 @@
        <widget class="QLineEdit" name="editUsername"/>
       </item>
       <item>
+       <widget class="QCheckBox" name="chkTls">
+        <property name="text">
+         <string>TLS</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="btnConnect">
         <property name="text">
          <string>Connect</string>
@@ -92,7 +99,6 @@
       <property name="font">
        <font>
         <pointsize>12</pointsize>
-        <weight>75</weight>
         <bold>true</bold>
        </font>
       </property>
