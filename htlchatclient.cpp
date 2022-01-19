@@ -351,7 +351,7 @@ void htlChatClient::handleIncomingFileTransfer(QString user, QString name, QStri
                                                                  + user + ": " + name + " Size: " + size
                                                                  + ". Accept?");
     if(response == QMessageBox::Yes) {
-        QString fn = QFileDialog::getSaveFileName(this, "Save file...");
+        QString fn = QFileDialog::getSaveFileName(this, "Save file...", name);
         if(fn.isEmpty()) {
             command.append("rejectFileTransfer");
         } else {
