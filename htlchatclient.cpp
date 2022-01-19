@@ -223,6 +223,13 @@ void htlChatClient::readyRead()
         } else {
             handlePublicMessage(sender, message);
         }
+    } else if(command == "commandFailed") {
+        QString failedCommand = commands.at(1);
+        QString message = commands.at(2);
+        QMessageBox::information(this,
+                                 "Error",
+                                 "Command failed: " + failedCommand + "\n"
+                                 + message);
     } else if(command == "userDisconnected") {
         QString user = commands.at(1);
         mUserlist.removeAll(user);
